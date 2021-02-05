@@ -5,7 +5,7 @@ from sklearn.linear_model import RANSACRegressor
 from sklearn.metrics import mean_squared_error
 from operator import itemgetter
 
-def ransac_polyfit(x,y,order,n=0.8,k=400,t=3.7,f=0.9):
+def ransac_polyfit(x,y,order, t, n=0.8,k=400,f=0.9):
     besterr = np.inf
     bestfit = np.array([None])
     bestfitderi = np.array([None])
@@ -40,10 +40,9 @@ def ddbscaninner(data, is_core, neighborhoods, neighborhoods2, labels):
     elif loss == 1:
       loss_function = lambda y_true, y_pred: np.abs((y_true - y_pred)) ** 2
     
-    acc_th1 = 0.80
-    acc_th2 = 0.95
+    acc_th = 0.80
     points_th = 70
-    t = 7
+    t = 5
     
     #Beginning of the algorithm - DBSCAN check part
     label_num = 0
@@ -79,11 +78,10 @@ def ddbscaninner(data, is_core, neighborhoods, neighborhoods2, labels):
             ransac = RANSACRegressor(min_samples=0.8)
             ransac.fit(np.expand_dims(x, axis=1), y)
             accuracy = sum(ransac.inlier_mask_)/len(y)
-            if accuracy > acc_th1:
+            if accuracy > acc_th:
                 clu_stra.append(label_num)
                 acc.append(accuracy)
                 length.append(sum(labels==label_num))
-                #print(label_num)
         label_num += 1
     
     #End of DBSCAN loop - check if directional part is viable
@@ -134,19 +132,18 @@ def ddbscaninner(data, is_core, neighborhoods, neighborhoods2, labels):
             
             #Now that the provisional cluster has been found, directional search begins
             if sum(labels==label_num) > points_th:
-                check_coor = 1
-                x = data[labels==label_num][:,0]
-                y = data[labels==label_num][:,1]
+
+                clu_coordinates = [tuple(row) for row in data[labels==label_num]] 
+                uniques = np.unique(clu_coordinates,axis=0)
+                x = uniques[:,0]
+                y = uniques[:,1]
                 
                 
-                if np.std(x) < np.std(y) and 0:
-                    x = data[labels==label_num][:,1]
-                    y = data[labels==label_num][:,0]
-                    check_coor = 0
+                
 
                 
                 #RANSAC fit
-                fit_model, fit_deri = ransac_polyfit(x,y,order=1)
+                fit_model, fit_deri = ransac_polyfit(x,y,order=1, t = t)
                 #Adding new points to the cluster
                 if sum(fit_model == None) == 0:
                     control = 1
@@ -162,22 +159,15 @@ def ddbscaninner(data, is_core, neighborhoods, neighborhoods2, labels):
                             for k in neig2:
                                 stack.append(k)
                         stack = np.unique(stack).tolist()
-                        if check_coor:
-                            res_th = t / np.cos(np.arctan(np.polyval(fit_deri,data[:,0])))
-                            inliers_bool = np.abs(np.polyval(fit_model, data[:,0])-data[:,1]) < res_th
-                            inliers = np.where(inliers_bool)[0]
-                            
- 
-                        else:
-                            res_th = t / np.cos(np.arctan(np.polyval(fit_deri,data[:,1])))
-                            inliers = np.abs(np.polyval(fit_model, data[:,1])-data[:,0]) < res_th
-                            inliers = np.where(inliers_bool)[0]
+                        
+                        res_th = t / np.cos(np.arctan(np.polyval(fit_deri,data[:,0])))
+                        inliers_bool = np.abs(np.polyval(fit_model, data[:,0])-data[:,1]) < res_th
+                        inliers = np.where(inliers_bool)[0]
                             
 
                         i = stack[len(stack)-1]
                         #Adding the inliers points from stack list and filling stack with more possible points
                         while True:
-                            #if i in inliers and (labels[i]==-1):
                             if i in inliers:
                                 labels[i] = label_num
                                 if is_core[i]:
@@ -193,57 +183,30 @@ def ddbscaninner(data, is_core, neighborhoods, neighborhoods2, labels):
                             del(stack[len(stack)-1])
 
                         #Checking current cluster for possible fit model update
-                        check_coor = 1
-                        x = data[labels==label_num][:,0]
-                        y = data[labels==label_num][:,1]
 
-                        if np.std(x) < np.std(y) and 0:
-                            x = data[labels==label_num][:,1]
-                            y = data[labels==label_num][:,0]
-                            check_coor = 0
+                        clu_coordinates = [tuple(row) for row in data[labels==label_num]] 
+                        uniques = np.unique(clu_coordinates,axis=0)
+                        x = uniques[:,0]
+                        y = uniques[:,1]
 
 
                         #Updating the ransac model
-                        #if sum(labels==label_num) < 1300 or counter < 2:
                         if control == 1:
-                            fit_model, fit_deri = ransac_polyfit(x,y,order=1)
+                            fit_model, fit_deri = ransac_polyfit(x,y,order=1, t = t)
                         else:
-                            fit_model, fit_deri = ransac_polyfit(x,y,order=3)
+                            fit_model, fit_deri = ransac_polyfit(x,y,order=3, t = t)
                         pts1 = sum(labels==label_num)
                         #Stop criteria
                         if (pts1 == pts0) or (sum(fit_model == None) != 0):
                             if control == 0:
                                 break
                             else:
-                                fit_model, fit_deri = ransac_polyfit(x,y,order=3)
+                                fit_model, fit_deri = ransac_polyfit(x,y,order=3, t = t)
                                 control = 0
                                 if sum(fit_model == None) != 0:
                                     break
                 
-                #Putting points that are in the neighborhood (small one) in the cluster, even not respecting ransac
-                #moment_lab = np.where(labels==label_num)[0]
-                #stack = []
-                #for j in moment_lab:
-                #    neig = neighborhoods[j]
-                #    for k in neig:
-                #        if labels[k] == -1:
-                #            stack.append(k)
-                #stack = np.unique(stack).tolist()
-                #while True:
-                #    if labels[i] == -1:
-                #        labels[i] = label_num
-                #        if is_core[i]:
-                #            neighb = neighborhoods[i]
-                #            for i in range(neighb.shape[0]):
-                #                v = neighb[i]
-                #                if labels[v] == -1:
-                #                    stack.append(v)
-                #
-                #    if len(stack) == 0:
-                #        break
-                #    i = stack[len(stack)-1]
-                #    del(stack[len(stack)-1])
-            
+                
             #label_num += 1
             if sum(labels==label_num) > 29:
                 label_num += 1
