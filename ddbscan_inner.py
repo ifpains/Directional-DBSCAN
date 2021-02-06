@@ -4,8 +4,10 @@ import numpy as np
 from sklearn.linear_model import RANSACRegressor
 from sklearn.metrics import mean_squared_error
 from operator import itemgetter
+import time
 
 def ransac_polyfit(x,y,order, t, n=0.8,k=400,f=0.9):
+    
     besterr = np.inf
     bestfit = np.array([None])
     bestfitderi = np.array([None])
@@ -31,18 +33,21 @@ def ransac_polyfit(x,y,order, t, n=0.8,k=400,f=0.9):
                      
     return bestfit, bestfitderi
 
+#Parameters of the new ransac function:
+# x, y - x and y coordinates 
+# order - Order of the polynomial
+# t - Thickness of the track
+# n - Random fraction of the data used to find the polyfit
+# k - Number of tries 
+# f - Accuracy of the RANSAC to consider the fit a good one
     
 def ddbscaninner(data, is_core, neighborhoods, neighborhoods2, labels):
     #Definitions
-    loss = 0
-    if loss == 0:
-      loss_function = lambda y_true, y_pred: np.abs(y_true - y_pred)
-    elif loss == 1:
-      loss_function = lambda y_true, y_pred: np.abs((y_true - y_pred)) ** 2
     
-    acc_th = 0.80
-    points_th = 70
-    t = 5
+    acc_th = 0.80    #Accuracy of the RANSAC to save one point of the cluster for the directional search
+    points_th = 70   #Minimum number of points to test the ransac
+    t = 5  #The thickness of the track
+    time_threshold = np.inf #Maximum ammount of time that the directional search is enabled for each cluster (marked as infinite to see the results)
     
     #Beginning of the algorithm - DBSCAN check part
     label_num = 0
@@ -93,7 +98,7 @@ def ddbscaninner(data, is_core, neighborhoods, neighborhoods2, labels):
         labels[:,0] = la_aux
         return labels
     else:
-        #If any cluster has a good fit model, it'll be marked from the best fitted cluster to the worst, each of them respecting the accuracy threshold
+        #If any cluster has a good fit model, it'll be marked from the worst fitted cluster to the best, each of them respecting the accuracy threshold
         auxiliar_points = []
         vet_aux = np.zeros([len(clu_stra),3])
         vet_aux[:,0] = np.asarray(clu_stra)
@@ -108,7 +113,7 @@ def ddbscaninner(data, is_core, neighborhoods, neighborhoods2, labels):
             auxiliar_points.append(np.where(lt)[0][0])
             print("The point %d has been assigned as part of a good fit" %(np.where(lt)[0][0]))
         
-        #Now the clusterization will begin from zero with directionality enabled first for the clusters that have a good fit model
+        #Now the clusterization will begin from zero with directionality enabled for the clusters that have a good fit model
         label_num = 0
         labels = np.full(data.shape[0], -1, dtype=np.intp)
         stack = []
@@ -132,22 +137,21 @@ def ddbscaninner(data, is_core, neighborhoods, neighborhoods2, labels):
             
             #Now that the provisional cluster has been found, directional search begins
             if sum(labels==label_num) > points_th:
-
+                
+                #Taking unique points to use on the ransac
                 clu_coordinates = [tuple(row) for row in data[labels==label_num]] 
                 uniques = np.unique(clu_coordinates,axis=0)
                 x = uniques[:,0]
                 y = uniques[:,1]
                 
                 
-                
-
-                
                 #RANSAC fit
                 fit_model, fit_deri = ransac_polyfit(x,y,order=1, t = t)
-                #Adding new points to the cluster
+                #Adding new points to the cluster (If the fit_model output is None, then no model was found)
                 if sum(fit_model == None) == 0:
                     control = 1
                     pts1 = 0
+                    t1 = time.time()
                     while True:
 
                         #Filling stack list with possible new points to be added (start point)
@@ -196,7 +200,11 @@ def ddbscaninner(data, is_core, neighborhoods, neighborhoods2, labels):
                         else:
                             fit_model, fit_deri = ransac_polyfit(x,y,order=3, t = t)
                         pts1 = sum(labels==label_num)
-                        #Stop criteria
+                        #Stop criteria - time
+                        t2 = time.time()
+                        if (t2 - t1) > time_threshold:
+                            break
+                        #Stop criteria - When there is no more point to be added or if the fit is not good anymore
                         if (pts1 == pts0) or (sum(fit_model == None) != 0):
                             if control == 0:
                                 break
