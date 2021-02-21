@@ -1,0 +1,33 @@
+Files:
+
+ddbscan_.py: It is the library to import the DDBSCAN class, there is nearly any parameter here to set. The DDBSCAN class inputs are:
+EPS - Maximum radius to look if a point is or not a core point.
+EPS_ransac - Maximum radius to look for more points to add to the cluster at directional search (obviusly has to be higher than EPS in order to make any difference)
+Min_samples - Minimum number of points to consider a point as a core point.
+X - Data used on the DDBSCAN attribute fit.
+
+Output: The class has the same attributes of the standard iDBSCAN, the difference is on the labels attribute, where the output is now a (length x 2) matrix, where the second collunm
+shows the clusters modified by the directional search.
+
+ddbscan_cython.py: Modified version of the file above to import the other function written in cython.
+
+ddbscan_inner.py: It is the function that is inside the ddbscan_.py that does all the magic. It contains the new ransac_polyfit and the ddbscan_inner functions.
+ransac_polyfit - Responsible to find the ideal fit for the provisory cluster. (The parameters are explained on the file) 
+ddbscan_inner - Responsible to put the points together in clusters. (The parameters are explained on the file)
+
+ddbscan_inner_cython.pyx: Adpated version of the file above written in cython.
+
+setup.py: File needed to build the .cpp version of the .pyx file. The following command should be used (It'll create the .cpp and the .so files of the same name):
+$python setup.py build_ext --inplace
+
+
+i2BSCAN_DEBUG.ipynb: Simplified notebook of the reconstruction algorithm in order to verify the output of the iDBSCAN and iDDBSCAN. The code also has comments, but here you can change
+the ddbscan_.py parameters and have a look of how to use it. Suggested runs: (2097, 2098; 2317, 2320) Pedestals: (2170; 2316)
+
+iDDBSCAN (python vs cython): Notebook to compare the time performance differences between the iDDBSCAN fully in python and the iDDBSCAN with a part written in cython. It also shows
+how to use the functions when the data array is already given. (There are 4 different events in the "Events" file saved as .npy)
+
+
+tools_lib.py: File with necessary functions to run the i2BSCAN file.
+
+
