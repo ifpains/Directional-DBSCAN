@@ -190,10 +190,10 @@ def ddbscan(X, eps=0.5, epsransac=1.0, min_samples=5, metric='minkowski', metric
 
     # A list of all core samples found.
     core_samples = np.asarray(n_neighbors >= min_samples, dtype=np.uint8)
-    inicio = time.time()
+    start = time.time()
     labels = ddbscaninner(X, core_samples, neighborhoods, neighborhoods2, labels)
-    fim = time.time()
-    print("O dbscaninner durou %d segundos." %(fim-inicio))
+    final = time.time()
+    print("The ddbscaninner needed %d seconds." %(final-start))
     return np.where(core_samples)[0], labels
 
 
