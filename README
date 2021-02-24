@@ -18,7 +18,10 @@ ddbscan_inner - Responsible to put the points together in clusters. (The paramet
 ddbscan_inner_cython.pyx: Adpated version of the file above written in cython.
 
 setup.py: File needed to build the .cpp version of the .pyx file. The following command should be used (It'll create the .cpp and the .so files of the same name):
-$python setup.py build_ext --inplace
+$pip install cython (if cython is not installed)
+$python setup.py build_ext --inplace (command to build the .cpp)
+
+
 
 
 i2BSCAN_DEBUG.ipynb: Simplified notebook of the reconstruction algorithm in order to verify the output of the iDBSCAN and iDDBSCAN. The code also has comments, but here you can change
