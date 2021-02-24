@@ -22,8 +22,6 @@ $pip install cython (if cython is not installed)
 $python setup.py build_ext --inplace (command to build the .cpp)
 
 
-
-
 i2BSCAN_DEBUG.ipynb: Simplified notebook of the reconstruction algorithm in order to verify the output of the iDBSCAN and iDDBSCAN. The code also has comments, but here you can change
 the ddbscan_.py parameters and have a look of how to use it. Suggested runs: (2097, 2098; 2317, 2320) Pedestals: (2170; 2316)
 
